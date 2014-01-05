@@ -27,7 +27,7 @@ auto argMin(alias f, alias less = "a < b", InputRange)(InputRange args)
 
     assert(!args.empty, "Cannot find argmin of empty range.");
     auto best = args.front;
-    auto bestVal = f(best);
+    auto bestVal = unaryFun!f(best);
     args.popFront();
     while (!args.empty)
     {
