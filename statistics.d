@@ -146,11 +146,6 @@ public:
         return uniform(0.0, 1.0, urng);
     }
 
-    real sample()
-    {
-        return sample(rndGen);
-    }
-
     @property real min()
     {
         return m_min;
@@ -257,11 +252,6 @@ public:
         return ret;
     }
 
-    real sample()
-    {
-        return sample(rndGen);
-    }
-
     @property real mean() { return m_mean; }
     @property real mode() { return m_mean; }
     @property real median() { return m_mean; }
@@ -311,11 +301,6 @@ public:
     real sample(UniformRandomNumberGenerator)(ref UniformRandomNumberGenerator urng)
     {
         return m_normalD.sample(urng) * sqrt(m_nu / m_gammaD.sample(urng));
-    }
-
-    real sample()
-    {
-        return sample(rndGen);
     }
 
     @property real nu()
@@ -455,11 +440,6 @@ public:
         return pow(u, 1.0 / m_alpha) * a1 * v * m_beta;
     }
 
-    real sample()
-    {
-        return sample(rndGen);
-    }
-
     @property real alpha()
     {
         return m_alpha;
@@ -549,11 +529,6 @@ public:
         return uniform(0.0, 1.0, urng) > m_q;
     }
 
-    real sample()
-    {
-        return sample(rndGen);
-    }
-
     @property real p()
     {
         return 1 - m_q;
@@ -631,11 +606,6 @@ public:
     {
     }
 
-    real sample()
-    {
-        return sample(rndGen);
-    }
-
     @property real p() { return m_p; }
     @property real q() { return 1 - m_p; }
     @property real mean() { return m_n * m_p; }
@@ -650,6 +620,11 @@ private:
     size_t m_n;
     real m_p;
 }+/
+
+auto sample(Distribution)(Distribution d)
+{
+    return d.sample(rndGen);
+}
 
 auto samples(ProbabilityDistribution, UniformRandomNumberGenerator)
             (ProbabilityDistribution distribution, ref UniformRandomNumberGenerator urng)
