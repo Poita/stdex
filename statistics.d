@@ -363,19 +363,86 @@ private:
     GammaDistribution m_gammaD;
 }
 
-unittest
+struct ChiSquaredDistribution
 {
-    /+import std.stdio;
-    writeln("testing stdex.statistics.StudentTDistribution");
+public:
+    this(real degreesOfFreedom = 1)
+    {
+        m_k = degreesOfFreedom;
+        m_gammaD = GammaDistribution(degreesOfFreedom / 2.0, 1.0);
+    }
+
+    real pdf(real x)
+    {
+        // TODO: check accuracy of this
+        // TODO: cache constants
+        real halfK = k / 2.0;
+        return pow(x, halfK - 1.0) * exp(-x / 2.0) / pow(2.0, halfK) * gamma(halfK);
+    }
+
+    real cdf(real x)
+    {
+        // TODO: check accuracy of this
+        // TODO: cache constants
+        real halfK = k / 2.0;
+        return gammaIncomplete(halfK, x / 2.0) / gamma(halfK);
+    }
+
+    real sample(UniformRandomNumberGenerator)(ref UniformRandomNumberGenerator urng)
+    {
+        return 2.0 * m_gammaD.sample(urng);
+    }
+
+    @property real k()
+    {
+        return m_k;
+    }
+
+    @property real mean()
+    {
+        return m_k;
+    }
+
+    @property real mode()
+    {
+        return max(k - 2.0, 0.0);
+    }
+
+    @property real median()
+    {
+        // TODO: this is approximate, is there a better formula?
+        return k * pow(1.0 - 2.0 / (9.0 * m_k), 3.0);
+    }
     
-    //auto xs = StudentTDistribution(1).samples.take(10000);
-    auto xs = StudentTDistribution(1).samples.take(100000);
-    int[int] h;
-    foreach (x; xs)
-        h[cast(int)(floor(x*10))]++;
-    auto ha = h.keyValueArray.sort!("a[0] < b[0]");
-    foreach (t; ha.filter!("a[1] > 10"))
-        writefln("% 3.1f: %s", t[0]/10.0, repeat("*").take(t[1]/50).join);+/
+    @property real stdDeviation()
+    {
+        return sqrt(variance);
+    }
+
+    @property real variance()
+    {
+        return 2.0 * m_k;
+    }
+
+    @property real skewness()
+    {
+        return sqrt(8.0 / m_k);
+    }
+
+    @property real kurtosis()
+    {
+        return sqrt(12.0 / m_k);
+    }
+
+    @property real entropy()
+    {
+        real halfK = m_k / 2.0;
+        return halfK + log(2.0 * gamma(halfK)) + (1.0 - halfK) * digamma(halfK);
+    }
+
+private:
+    real m_k;
+    GammaDistribution m_gammaD;
 }
 
 struct GammaDistribution
