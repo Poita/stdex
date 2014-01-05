@@ -53,6 +53,32 @@ T clamp(T)(in T x, in T a, in T b)
     return min(max(x, a), b);
 }
 
+T clamp01(T)(in T x)
+{
+    return min(max(x, 0), 1);
+}
+
+U lerp(T, U)(in T t, in U from, in U to)
+{
+    return (1 - t) * from + t * to;
+}
+
+U lerpClamped(T, U)(in T t, in U from, in U to)
+{
+    return lerp(clamp01(t), from, to);
+}
+
+T inverseLerp(T)(in T x, in T from, in T to)
+{
+    assert(to != from, "Cannot inverse lerp between equal values.");
+    return (x - from) / (to - from);
+}
+
+T inverseLerpClamp(T)(in T x, in T from, in T to)
+{
+    return inverseLerp(x, from, to).clamp01();
+}
+
 auto sum(Range)(Range r, ElementType!Range seed = 0)
 {
     return reduce!("a + b")(seed, r);
