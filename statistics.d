@@ -114,9 +114,42 @@ real pValue(real populationMean, real sampleMean, real sampleStdDeviation, size_
     }
 }
 
-@property real sf(Distribution)(Distribution dist, real x)
+auto chiSquaredTest(ObservedRange, ExpectedRange)
+                   (ObservedRange observed, ExpectedRange expected, size_t degreesOfFreedom = size_t.max)
 {
-    return 1 - dist.cdf(x);
+    real x2 = 0.0;
+    size_t calculatedDoF = 0;
+    foreach (e; zip(observed, expected))
+    {
+        x2 += sqr(e[0] - e[1]) / e[1];
+        ++calculatedDoF;
+    }
+    size_t dof = degreesOfFreedom == size_t.max ? calculatedDoF : degreesOfFreedom;
+    real p = ChiSquaredDistribution(dof).sf(x2);
+    return namedTuple!("stat", "p")(x2, p);
+}
+
+auto oneWayFRatio(RangeOfSamples)(RangeOfSamples sampleSets)
+{
+    // TODO: could be done faster, but this is easier to read and fast enough.
+    real[] groupMeans = sampleSets.save.map!mean.array();
+    size_t[] groupSizes = sampleSets.save.map!walkLength.array();
+    real overallMean = groupMeans.mean();
+    real sB = zip(groupMeans, groupSizes).map!(x => x[1] * sqr(x[0] - overallMean)).sum();
+    real sW = zip(sampleSets, groupMeans).map!(x => x[0].map!(s => sqr(s - x[1])).sum()).sum();
+    size_t fB = sampleSets.walkLength - 1;
+    size_t fW = groupSizes.map!(x => x - 1).sum();
+    real fRatio = (sB * fW) / (sW * fB);
+    real p = FisherFDistribution(fB, fW).sf(fRatio);
+    return namedTuple!("stat", "p")(fRatio, p);
+}
+
+unittest
+{
+    import std.stdio;
+    writeln("testing stdex.statistics.oneWayFRatio");
+    real[][] samples = [[6, 8, 4, 5, 3, 4], [8, 12, 9, 11, 6, 8], [13, 9, 11, 8, 7, 12]];
+    writeln(oneWayFRatio(samples));
 }
 
 struct ContinuousUniformDistribution
@@ -445,6 +478,108 @@ private:
     GammaDistribution m_gammaD;
 }
 
+struct FisherFDistribution
+{
+public:
+    this(real d1 = 1, real d2 = 1)
+    {
+        m_d1 = d1;
+        m_d2 = d2;
+        m_gammaD1 = GammaDistribution(d1 / 2.0, 1.0);
+        m_gammaD2 = GammaDistribution(d2 / 2.0, 1.0);
+    }
+
+    real pdf(real x)
+    {
+        // TODO: check accuracy of this
+        // TODO: cache constants
+        real p = pow(m_d1 * x, m_d1) * pow(m_d2, m_d2);;
+        p /= pow(m_d1 * x + m_d2, m_d1 + m_d2);
+        p = sqrt(p);
+        p /= x * beta(m_d1 / 2.0, m_d2 / 2.0);
+        return p;
+    }
+
+    real cdf(real x)
+    {
+        // TODO: check accuracy of this
+        // TODO: cache constants
+        return betaIncomplete(m_d1 / 2.0, m_d2 / 2.0, m_d1 * x / (m_d1 * x + m_d2));
+    }
+
+    real sample(UniformRandomNumberGenerator)(ref UniformRandomNumberGenerator urng)
+    {
+        return (m_gammaD1.sample(urng) * m_d1) / (m_gammaD2.sample(urng) * m_d2);
+    }
+
+    @property real m()
+    {
+        return m_d1;
+    }
+
+    @property real n()
+    {
+        return m_d2;
+    }
+
+    @property real mean()
+    {
+        // TODO: what is this when d2 <= 2.0 ???
+        return m_d2 > 2.0 ? m_d2 / (m_d2 - 2.0) : real.nan;
+    }
+
+    @property real mode()
+    {
+        // TODO: what is this when d1 <= 2.0 ???
+        return m_d1 > 2.0 ? (m_d1 - 2.0) / m_d1 * (m_d2 / (m_d2 + 2.0)) : real.nan;
+    }
+
+    @property real median()
+    {
+        // TODO:
+        return real.nan;
+    }
+    
+    @property real stdDeviation()
+    {
+        return sqrt(variance);
+    }
+
+    @property real variance()
+    {
+        // TODO: what is this when d2 <= 4.0 ???
+        return m_d2 > 4.0 ? (2.0 * sqr(m_d2) * (m_d1 + m_d2 - 2.0)) / (m_d1 * sqr(m_d2 - 2.0) * (m_d2 - 4.0)) : real.nan;
+    }
+
+    @property real skewness()
+    {
+        // TODO: what is this when d2 <= 6.0
+        return m_d2 > 6.0 ? ((2.0 * m_d1 + m_d2 - 2.0) * sqrt(8.0 * (m_d2 - 4.0))) /
+                            ((m_d2 - 6.0) * sqrt(m_d1 * (m_d1 + m_d2 - 2.0))) : real.nan;
+    }
+
+    @property real kurtosis()
+    {
+        // TODO: what is this when d2 <= 8.0
+        real k = m_d1 * (5.0 * m_d2 - 22.0) * (m_d1 + m_d2 - 2.0);
+        k += (m_d2 - 4.0) * sqr(m_d2 - 2.0);
+        k /= m_d1 * (m_d2 - 6.0) * (m_d2 - 8.0) * (m_d1 + m_d2 - 2.0);
+        return 12.0 * k;
+    }
+
+    @property real entropy()
+    {
+        // TODO:
+        return real.nan;
+    }
+
+private:
+    real m_d1;
+    real m_d2;
+    GammaDistribution m_gammaD1;
+    GammaDistribution m_gammaD2;
+}
+
 struct GammaDistribution
 {
 public:
@@ -704,10 +839,14 @@ auto samples(ProbabilityDistribution)(ProbabilityDistribution distribution)
     return samples(distribution, rndGen);
 }
 
+@property real sf(Distribution)(Distribution dist, real x)
+{
+    return 1 - dist.cdf(x);
+}
+
 // TODO Binomial Distribution
 // TODO Categorical Distribution
 // TODO Geometric Distribution
-// TODO Chi-squared Distribution
 // TODO DiscreteUniformDistribution
 
 // Random variates
