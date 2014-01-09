@@ -205,12 +205,12 @@ unittest
 	import std.typetuple;
 	foreach (search; TypeTuple!(breadthFirstSearch, depthFirstSearch, dijkstraSearch))
 	{
-		assert(search!(v => v == [3, 6])(g, u));
-		assert(!search!(v => v == [4, 6])(g, u));
-		assert(search!(v => v == [1, 6])(g, u));
-		assert(search!(v => v == [1, 1])(g, u));
-		assert(search!(v => v == [2, 3])(g, u));
-		assert(!search!(v => v == [4, 5])(g, u));
+		assert(search(g, u).canFind([3, 6]));
+		assert(!search(g, u).canFind([4, 6]));
+		assert(search(g, u).canFind([1, 6]));
+		assert(search(g, u).canFind([1, 1]));
+		assert(search(g, u).canFind([2, 3]));
+		assert(!search(g, u).canFind([4, 5]));
 	}
 }
 
