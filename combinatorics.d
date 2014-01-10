@@ -1,20 +1,3 @@
-// Written in the D programming language.
-
-/**
-This module defines combinatorics stuff.
-
-Source: $(PHOBOSSRC std/_combinatorics.d)
-
-Macros:
-
-WIKI = Phobos/StdCombinatorics
-
-Copyright: Copyright by authors 2012-.
-
-License: $(WEB boost.org/LICENSE_1_0.txt, Boost License 1.0).
-
-Authors: $(WEB poita.org, Peter Alexander).
- */
 module stdex.combinatorics;
 
 import core.bitop;

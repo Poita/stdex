@@ -1,23 +1,3 @@
-/++
-    Module containing utility functions that are of general use in all
-    programs.
-
-    This module provides:
-    $(UL
-        $(LI Formatted assert convenience function.)
-    )
-
-    Note:
-        None
-
-    See_Also:
-        Nothing
-
-    Copyright: Copyright 2011-2012
-    License:   $(WEB www.boost.org/LICENSE_1_0.txt, Boost License 1.0).
-    Authors:   Peter J Alexander
-  +/
-
 module stdex.util;
 
 import std.typecons;
