@@ -7,9 +7,9 @@ import std.range;
 
 void forEach(alias func, Range)(Range range)
 {
-	alias unaryFun!func f;
-	foreach (e; range)
-		f(e);
+    alias unaryFun!func f;
+    foreach (e; range)
+        f(e);
 }
 
 auto sorted(alias pred = "a < b", InputRange)(InputRange range)

@@ -10,134 +10,134 @@ import std.conv;
 struct Indices(size_t N)
 {
 public:
-	static assert(N != 0, "0 dimensions not allowed");
+    static assert(N != 0, "0 dimensions not allowed");
 
-	this(size_t[] dimensions)
-	{
-		m_dimensions[] = dimensions[];
-		m_indices[] = 0;
-	}
+    this(size_t[] dimensions)
+    {
+        m_dimensions[] = dimensions[];
+        m_indices[] = 0;
+    }
 
-	@property ref const(size_t[N]) front() const
-	{
-		return m_indices;
-	}
+    @property ref const(size_t[N]) front() const
+    {
+        return m_indices;
+    }
 
-	@property bool empty() const
-	{
-		return m_empty;
-	}
+    @property bool empty() const
+    {
+        return m_empty;
+    }
 
-	void popFront()
-	{
-		size_t i = 0;
-		while(i != N)
-		{
-			m_indices[i]++;
-			if (m_indices[i] != m_dimensions[i])
-				break;
-			m_indices[i] = 0;
-			++i;
-		}
-		m_empty = i == N;
-	}
+    void popFront()
+    {
+        size_t i = 0;
+        while(i != N)
+        {
+            m_indices[i]++;
+            if (m_indices[i] != m_dimensions[i])
+                break;
+            m_indices[i] = 0;
+            ++i;
+        }
+        m_empty = i == N;
+    }
 
-	// TODO: forward, bidirectional, random access
+    // TODO: forward, bidirectional, random access
 
 private:
-	size_t[N] m_dimensions;
-	size_t[N] m_indices = 0;
-	bool m_empty = false;
+    size_t[N] m_dimensions;
+    size_t[N] m_indices = 0;
+    bool m_empty = false;
 }
 
 Indices!2 indices(size_t a, size_t b)
 {
-	size_t[2] dimensions = void;
-	dimensions[0] = a;
-	dimensions[1] = b;
-	return Indices!2(dimensions[]);
+    size_t[2] dimensions = void;
+    dimensions[0] = a;
+    dimensions[1] = b;
+    return Indices!2(dimensions[]);
 }
 
 struct GroupSlices(alias _pred = "a == b", Range)
 {
-	static assert(isForwardRange!Range, "Range must be a forward range.");
-	static assert(hasSlicing!Range, "Range must support slicing.");
+    static assert(isForwardRange!Range, "Range must be a forward range.");
+    static assert(hasSlicing!Range, "Range must support slicing.");
 
 public:
-	alias binaryFun!_pred pred;
-	alias typeof(Range.init[0..1]) Slice;
+    alias binaryFun!_pred pred;
+    alias typeof(Range.init[0..1]) Slice;
 
-	this(Range r)
-	{
-		m_input = r;
-		peek();
-	}
+    this(Range r)
+    {
+        m_input = r;
+        peek();
+    }
 
-	@property Slice front()
-	{
-		return m_front;
-	}
+    @property Slice front()
+    {
+        return m_front;
+    }
 
-	@property bool empty()
-	{
-		return m_input.empty;
-	}
+    @property bool empty()
+    {
+        return m_input.empty;
+    }
 
-	void popFront()
-	{
-		m_input = m_next;
-		if (!m_input.empty)
-			peek();
-	}
+    void popFront()
+    {
+        m_input = m_next;
+        if (!m_input.empty)
+            peek();
+    }
 
-	@property auto save()
-	{
-		return typeof(this)(m_input.save);
-	}
+    @property auto save()
+    {
+        return typeof(this)(m_input.save);
+    }
 
-	// TODO: back, popBack
+    // TODO: back, popBack
 
 private:
-	void peek()
-	{
-		m_next = m_input.save;
-		size_t n = 1;
-		m_next.popFront();
-		while (!m_next.empty && pred(m_input.front, m_next.front))
-		{
-			m_next.popFront();
-			++n;
-		}
-		m_front = m_input[0..n];
-	}
+    void peek()
+    {
+        m_next = m_input.save;
+        size_t n = 1;
+        m_next.popFront();
+        while (!m_next.empty && pred(m_input.front, m_next.front))
+        {
+            m_next.popFront();
+            ++n;
+        }
+        m_front = m_input[0..n];
+    }
 
-	Range m_input;
-	Range m_next;
-	Slice m_front;
+    Range m_input;
+    Range m_next;
+    Slice m_front;
 }
 
 GroupSlices!(pred, Range) groupSlices(alias pred = "a == b", Range)(Range r)
 {
-	return GroupSlices!(pred, Range)(r);
+    return GroupSlices!(pred, Range)(r);
 }
 
 auto mapZip(alias f, Range)(Range r)
-	if (isInputRange!Range && 
-		is(typeof(unaryFun!f(r.front))))
+    if (isInputRange!Range && 
+        is(typeof(unaryFun!f(r.front))))
 {
-	alias unaryFun!f fun;
-	return r.map!(e => tuple(e, fun(e)));
+    alias unaryFun!f fun;
+    return r.map!(e => tuple(e, fun(e)));
 }
 
 unittest
 {
-	import std.stdio;
-	writeln("testing stdex.range.groupSlices");
+    import std.stdio;
+    writeln("testing stdex.range.groupSlices");
 
-	int[] a = [1, 2, 3, 4, 5];
-	assert(equal(a.groupSlices(), [[1], [2], [3], [4], [5]]));
-	assert(equal(a.groupSlices!"a%2==b%2"(), [[1], [2], [3], [4], [5]]));
-	assert(equal(a.groupSlices!"(a<3)==(b<3)"(), [[1, 2], [3, 4, 5]]));
+    int[] a = [1, 2, 3, 4, 5];
+    assert(equal(a.groupSlices(), [[1], [2], [3], [4], [5]]));
+    assert(equal(a.groupSlices!"a%2==b%2"(), [[1], [2], [3], [4], [5]]));
+    assert(equal(a.groupSlices!"(a<3)==(b<3)"(), [[1, 2], [3, 4, 5]]));
 }
 
 struct MultiArrayIndices

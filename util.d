@@ -24,8 +24,8 @@ import std.typecons;
 import std.typetuple;
 
 /++
-	Throws an AssertError if test is false. The args can be used to provide a
-	format string.
+    Throws an AssertError if test is false. The args can be used to provide a
+    format string.
   +/
 void assertf(T, string file = __FILE__, int line = __LINE__, Args...)
             (lazy T test, lazy Args args)
