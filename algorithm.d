@@ -4,6 +4,7 @@ import std.algorithm;
 import std.array;
 import std.functional;
 import std.range;
+import std.traits;
 
 void forEach(alias func, Range)(Range range)
 {
@@ -77,4 +78,60 @@ ulong fnv1(Range)(Range x)
     foreach (b; x)
         h = (h * 1099511628211UL) ^ b;
     return h;
+}
+
+auto longestCommonSubsequence(R1, R2)(R1 a, R2 b)
+{
+    // TODO: use hirschberg's algorithm
+    alias T = CommonType!(Unqual!(ElementType!R1), Unqual!(ElementType!R1));
+    auto L = new uint[][](a.length + 1, b.length + 1);
+ 
+    foreach (i; 0..a.length)
+    {
+        import std.stdio;
+        writeln(i);
+        foreach (j; 0..b.length)
+            L[i + 1][j + 1] = (a[i] == b[j]) ? (1 + L[i][j]) :
+                              max(L[i + 1][j], L[i][j + 1]);
+    }
+ 
+    Unqual!T[] result;
+    for (auto i = a.length, j = b.length; i > 0 && j > 0; ) {
+        if (a[i - 1] == b[j - 1]) {
+            result ~= a[i - 1];
+            i--;
+            j--;
+        } else
+            if (L[i][j - 1] < L[i - 1][j] || L[i][j - 1] == L[i - 1][j] && a[i - 1] < b[j - 1])
+                i--;
+            else
+                j--;
+    }
+ 
+    result.reverse();
+    return result;
+}
+
+///
+unittest
+{
+    assert(longestCommonSubsequence("hello"d, "hero"d) == "heo"d);
+}
+
+bool hasSubsequence(R1, R2)(R1 a, R2 b)
+{
+    while (!a.empty && !b.empty)
+    {
+        if (a.front == b.front)
+            b.popFront();
+        a.popFront();
+    }
+    return b.empty;
+}
+
+///
+unittest
+{
+    assert("hello".hasSubsequence("hlo"));
+    assert(!"hello".hasSubsequence("hle"));
 }

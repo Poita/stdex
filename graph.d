@@ -44,6 +44,94 @@ auto forwardSearch(Queue, Graph, Vertex)(Graph graph, Vertex start)
     return ForwardSearch!(Queue, Graph)(graph, start);
 }
 
+auto topologicalSort(Graph)(Graph graph)
+{
+    return TopologicalSort!(Graph)(graph);
+}
+
+struct TopologicalSort(Graph)
+{
+public:
+    alias VertexType!Graph Vertex;
+
+    this(Graph graph)
+    {
+        m_graph = graph;
+        m_roots = m_graph.vertices;
+        peek();
+    }
+
+    @property Vertex front()
+    {
+        return m_stack.front;
+    }
+
+    @property bool empty() const
+    {
+        return m_empty;
+    }
+
+    void popFront()
+    {
+        peek();
+    }
+
+private:
+    void peek()
+    {
+        if (!m_stack.empty)
+        {
+            m_marked[m_stack.front] = true;
+            m_stack.pop();
+        }
+
+        if (m_stack.empty)
+        {
+            m_roots = m_roots.find!(v => v !in m_marked);
+            m_empty = m_roots.empty;
+            if (!m_empty)
+                m_stack.push(m_roots.front);
+        }
+        
+        if (!m_empty)
+        {
+            for (;;)
+            {
+                Vertex u = m_stack.front;
+                auto vs = m_graph.adjacent(u).filter!(v => v !in m_marked);
+                if (vs.empty)
+                    break;
+                foreach (v; vs)
+                    m_stack.push(v);
+            }
+        }
+    }
+
+    Graph m_graph;
+    bool[Vertex] m_marked;
+    Stack!Vertex m_stack;
+    typeof(m_graph.vertices) m_roots;
+    bool m_empty = false;
+}
+
+unittest
+{
+    static struct Graph
+    {
+        int[] vertices;
+        int[][int] adj;
+        auto adjacent(int v) { return adj[v]; }
+    }
+
+    import std.stdio;
+
+    Graph g1 = Graph([0, 1, 2, 3, 4], [0:[2, 3], 1:[3, 4], 2:[1], 3:[], 4:[3]]);
+    assert(g1.topologicalSort.equal([3, 4, 1, 2, 0]));
+
+    //Graph g2 = Graph([2, 3, 5, 7, 8, 9, 10, 11], [2:[], 3:[8, 10], 5:[11], 7:[8, 11], 8:[9], 9:[], 10:[], 11:[2, 9, 10]]);
+    //assert(g2.topologicalSort.equal([7, 5, 3, 11, 10, 8, 2]));
+}
+
 struct ForwardSearch(Queue, Graph)
 {
 public:
@@ -87,7 +175,7 @@ private:
     Queue m_queue;
 }
 
-struct PrioritySearch(Graph, alias heuristicFunction = (v) => 0)
+struct PrioritySearch(Graph, alias heuristicFunction = "0")
 {
     import std.container : RedBlackTree;
     import std.typecons : Tuple;
@@ -97,6 +185,7 @@ struct PrioritySearch(Graph, alias heuristicFunction = (v) => 0)
 public:
     alias VertexType!Graph Vertex;
     alias typeof(Graph.init.edgeCost(Vertex.init, Vertex.init)) Cost;
+    alias typeof(Graph.init.adjacent(Vertex.init)) Edges;
     alias Tuple!(Cost, "cost", Vertex, "vertex") Node;
 
     this(Graph graph, Vertex start)
@@ -119,10 +208,8 @@ public:
 
     void popFront()
     {
-        import std.stdio;
         assert(!m_queue.empty);
-        Node nu = m_queue.front;
-        Vertex u = nu.vertex;
+        Vertex u = m_queue.front.vertex;
         m_queue.removeFront();
         foreach (v; m_graph.adjacent(u))
         {
@@ -174,7 +261,7 @@ unittest
         [1,1,1,1,1,0,1,1]
     ];
 
-    struct Graph
+    static struct Graph
     {
     public:
         int[2][] adjacent(int[2] u)
@@ -214,21 +301,22 @@ unittest
     }
 }
 
-auto implicitGraph(Vertex, alias _adjacent, alias _edgeCost = (u, v) => cast(size_t)1)()
+struct ImplicitGraph(Vertex, alias _adjacent, alias _edgeCost)
 {
-    struct Result
+    auto adjacent(Vertex v)
     {
-        auto adjacent(Vertex v)
-        {
-            return _adjacent(v);
-        }
-
-        auto edgeCost(Vertex u, Vertex v)
-        {
-            return _edgeCost(u, v);
-        }
+        return unaryFun!_adjacent(v);
     }
-    return Result();
+
+    auto edgeCost(Vertex u, Vertex v)
+    {
+        return binaryFun!_edgeCost(u, v);
+    }
+}
+
+auto implicitGraph(Vertex, alias _adjacent, alias _edgeCost = "cast(size_t)1")()
+{
+    return ImplicitGraph!(Vertex, _adjacent, _edgeCost)();
 }
 
 unittest

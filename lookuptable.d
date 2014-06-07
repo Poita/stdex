@@ -59,3 +59,22 @@ private:
     KeyValue[] m_entries;
     size_t[] m_indices;
 }
+
+auto lookupTable(alias hash = (ref x) => typeid(Key).getHash(&x), Key, Value)(Value[Key] entries)
+{
+    return LookupTable!(Key, Value, hash)(entries);
+}
+
+unittest
+{
+    auto t = lookupTable([1:"one", 2:"two", 3:"three"]);
+    assert(t[1] == "one");
+    assert(t[2] == "two");
+    assert(t[3] == "three");
+    assert(0 !in t);
+    assert(1 in t);
+    assert(2 in t);
+    assert(3 in t);
+    assert(4 !in t);
+    assert(t.length == 3);
+}

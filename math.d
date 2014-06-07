@@ -20,6 +20,8 @@ T dot(T)(in T[] a, in T[] b)
 
 V dot(K, V)(in V[K] a, in V[K] b)
 {
+    if (b.length < a.length)
+        return dot(b, a);
     V r = 0;
     foreach (k, v; a)
     {
@@ -34,7 +36,7 @@ V dot(K, V)(in V[K] a, in V[] b)
 {
     V r = 0;
     foreach (k, v; a)
-        if (k < b.length)
+        if (k < b.length && k >= 0)
             r += v * b[k];
     return r;
 }
@@ -43,7 +45,7 @@ V dot(K, V)(in V[] a, in V[K] b)
 {
     V r = 0;
     foreach (k, v; b)
-        if (k < a.length)
+        if (k < a.length && k >= 0)
             r += a[k] * v;
     return r;
 }

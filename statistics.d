@@ -11,6 +11,16 @@ import stdex.math;
 import stdex.range;
 import stdex.util;
 
+version(unittest)
+{
+    import std.stdio;
+}
+
+/**
+Computes the arithmetic mean of the elements of $(D samples).
+This is equal to the sum of the elements divided by the number of elements.
+$(D samples) must be a non-empty, finite, input range.
+ */
 auto mean(Range)(Range samples)
 {
     // TODO: Use Kahan.
@@ -31,6 +41,18 @@ auto mean(Range)(Range samples)
     return sum / n;
 }
 
+///
+unittest
+{
+    assert(mean([1, 3, 2]) == 2);
+}
+
+/**
+Computes the variance of the $(D samples) from the $(D mean).
+By default, $(D variance) computes the biased sample variance.
+To compute the unbiased sample variance, set $(D sampleCorrection) to $(D 1).
+$(D samples) must be a non-empty, finite, input range.
+ */
 real variance(Range, T)(Range samples, T mean, size_t sampleCorrection = 0)
 {
     // TODO: Use better numerical algo.
@@ -54,52 +76,84 @@ real variance(Range, T)(Range samples, T mean, size_t sampleCorrection = 0)
     return sum / n;
 }
 
+/**
+Computes the standard deviation of the $(D samples) from the $(D mean).
+This is equal to the square root of the variance.
+By default, $(D standardDeviation) computes the biased sample standard deviation.
+To compute the unbiased sample standard deviation, set $(D sampleCorrection) to $(D 1).
+$(D samples) must be a non-empty, finite, input range.
+ */
 real standardDeviation(Range, T)(Range samples, T mean, size_t sampleCorrection = 0)
 {
     return sqrt(variance(samples, mean, sampleCorrection));
 }
 
+/**
+Computes the median of the elements of $(D samples).
+When there is more than one median, any may be returned.
+$(D samples) must be a non-empty, finite, input range.
+ */
 T median(Range)(Range samples)
 {
+    // TODO: should use a predicate for sorting.
     static assert(isInputRange!Range, "samples must be an input range.");
     static assert(!isInfinite!Range, "samples must not be an infinite range.");
+    assert(!samples.empty, "Cannot compute the median of an empty sample.");
 
     // TODO: use the O(n) selection algorithm
     return samples.array.sort()[$ / 2];
 }
 
+/**
+Computes the mode of the elements of $(D samples).
+When there is more than one mode, any may be returned.
+$(D samples) must be a non-empty, finite, input range.
+ */
 ElementType!Range mode(Range)(Range samples)
 {
+    // TODO: should use a predicate for sorting.
     static assert(isInputRange!Range, "samples must be an input range.");
     static assert(!isInfinite!Range, "samples must not be an infinite range.");
+    assert(!samples.empty, "Cannot compute the mode of an empty sample.");
 
     return samples.array.sort().group.argMax!("a[1]")[0];
 }
 
+///
 unittest
 {
-    import std.stdio;
-    writeln("testing stdex.statistics.mode");
     assert([0, 2, 1, 1].mode == 1);
     assert([0].mode == 0);
     assert([1, 1, 0, 0, 0, 2].mode == 0);
 }
 
+/**
+Computes the unbiased sample standard deviation.
+$(D samples) must be a non-empty, finite, input range.
+ */
 real sampleStandardDeviation(Range, T)(Range samples, T mean)
 {
     return standardDeviation(samples, mean, 1);
 }
 
+/**
+Computes the standard error of a sampling distribution of size $(D sampleSize)
+and standard deviation $(D stdDeviation).
+ */
 real standardError(real stdDeviation, size_t sampleSize)
 {
+    assert(sampleSize != 0, "Cannot compute the standard error of an empty sampling distribution.");
     return stdDeviation / sqrt(sampleSize.to!real);
 }
 
+/**
+Computes the p-value for an observation. TODO
+ */
 real pValue(real populationMean, real sampleMean, real sampleStdDeviation, size_t sampleSize)
 {
     real error = standardError(sampleStdDeviation, sampleSize);
     auto difference = abs(populationMean - sampleMean);
-    if (false) //sampleSize > 30)
+    if (sampleSize > 30)
     {
         // Large sample size, use Normal Distribution.
         auto samplingDist = NormalDistribution(0.0, 1.0);
@@ -144,14 +198,21 @@ auto oneWayFRatio(RangeOfSamples)(RangeOfSamples sampleSets)
     return namedTuple!("stat", "p")(fRatio, p);
 }
 
+///
 unittest
 {
-    import std.stdio;
-    writeln("testing stdex.statistics.oneWayFRatio");
-    real[][] samples = [[6, 8, 4, 5, 3, 4], [8, 12, 9, 11, 6, 8], [13, 9, 11, 8, 7, 12]];
-    writeln(oneWayFRatio(samples));
+    real[][] samples = [[6, 8, 4, 5, 3, 4],
+                        [8, 12, 9, 11, 6, 8],
+                        [13, 9, 11, 8, 7, 12]];
+    auto r = oneWayFRatio(samples);
+    assert(r.stat.approxEqual(9.26471));
+    assert(r.p.approxEqual(0.00239878));
 }
 
+/**
+Models a continuous uniform probability distribution, with constant density
+over the [$(D min), $(D max)) range.
+ */
 struct ContinuousUniformDistribution
 {
 public:
@@ -165,7 +226,7 @@ public:
     real pdf(real x)
     {
         return x < m_min ? 0.0 :
-               x > m_max ? 0.0 :
+               x >= m_max ? 0.0 :
                1.0 / (m_max - m_min);
     }
 
@@ -176,7 +237,7 @@ public:
 
     real sample(UniformRandomNumberGenerator)(ref UniformRandomNumberGenerator urng)
     {
-        return uniform(0.0, 1.0, urng);
+        return uniform(m_min, m_max, urng);
     }
 
     @property real min()
@@ -206,6 +267,7 @@ public:
 
     @property real stdDeviation()
     {
+        enum real c_sqrt12 = sqrt(12.0);
         return (m_max - m_min) * c_sqrt12;
     }
 
@@ -221,6 +283,7 @@ public:
 
     @property real kurtosis()
     {
+        enum real c_kurtosis = -6.0 / 5.0;
         return c_kurtosis;
     }
 
@@ -230,8 +293,6 @@ public:
     }
 
 private:
-    enum real c_kurtosis = -6.0 / 5.0;
-    enum real c_sqrt12 = sqrt(12.0);
     real m_min;
     real m_max;
 }
@@ -285,14 +346,45 @@ public:
         return ret;
     }
 
-    @property real mean() { return m_mean; }
-    @property real mode() { return m_mean; }
-    @property real median() { return m_mean; }
-    @property real stdDeviation() { return m_stdDeviation; }
-    @property real variance() { return m_stdDeviation * m_stdDeviation; }
-    @property real skewness() { return 0; }
-    @property real kurtosis() { return 0; }
-    @property real entropy() { return 0.5 * log(2 * PI * E * variance); }
+    @property real mean()
+    {
+        return m_mean;
+    }
+
+    @property real mode()
+    {
+        return m_mean;
+    }
+
+    @property real median()
+    {
+        return m_mean;
+    }
+
+    @property real stdDeviation()
+    {
+        return m_stdDeviation;
+    }
+
+    @property real variance()
+    {
+        return m_stdDeviation * m_stdDeviation;
+    }
+
+    @property real skewness()
+    {
+        return 0;
+    }
+
+    @property real kurtosis()
+    {
+        return 0;
+    }
+
+    @property real entropy()
+    {
+        return 0.5 * log(2 * PI * E * variance);
+    }
 
 private:
     real m_mean;
@@ -843,6 +935,21 @@ auto samples(ProbabilityDistribution)(ProbabilityDistribution distribution)
 {
     return 1 - dist.cdf(x);
 }
+
+/+unittest
+{
+    import std.stdio;
+    writeln("testing stdex.statistics.StudentTDistribution");
+
+    //auto xs = StudentTDistribution(1).samples.take(10000);
+    auto xs = ChiSquaredDistribution(3).samples.take(100000);
+    int[int] h;
+    foreach (x; xs)
+        h[cast(int)(floor(x*10))]++;
+    auto ha = h.keyValueArray.sort!("a[0] < b[0]");
+    foreach (t; ha.filter!("a[1] > 10"))
+        writefln("% 3.1f: %s", t[0]/10.0, repeat("*").take(t[1]/50).join);
+}+/
 
 // TODO Binomial Distribution
 // TODO Categorical Distribution
